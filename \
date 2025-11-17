@@ -1,0 +1,29 @@
+from io import TextIOWrapper
+from typing import Any, Generator
+
+
+def read_in_chunks(file_object:TextIOWrapper, chunk_size:int=8)->Generator[str, Any, Any]:
+    while True:
+        data = file_object.read(chunk_size)
+        if not data:
+            break
+        yield data
+
+def read_lines(file:TextIOWrapper)->Generator[str, Any, Any]:
+    current_line: str = ""
+    for chunk in read_in_chunks(file):
+        parts = chunk.split("\n")
+        current_line += parts[0]
+        if len(parts) > 1:
+            yield current_line
+            print(f"Read: {current_line}\n")
+            current_line = parts[1] 
+
+def main()->None:
+    with open("./messages.txt") as file:
+        for line in read_lines(file):
+            print(f"read: {line}")
+
+
+if __name__ == "__main__":
+    main()
