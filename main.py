@@ -39,8 +39,9 @@ def main()->None:
     
 
     line = messages.get()
+    encoding = "utf-8"
     while line:
-        print(f"read: {line}")
+        print(f"{line.decode(encoding)}")
         line = messages.get()
 
     thread.join()
