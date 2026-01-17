@@ -13,14 +13,13 @@ class ChunkReader:
         self.num_bytes_per_read = num_bytes_per_read
 
     def read(self, p: list[bytes]) -> int:
-        breakpoint()
         if self.pos >= len(self.data):
             return 0
         end_idx = self.pos + self.num_bytes_per_read
         if end_idx > len(self.data):
             end_idx = len(self.data)
 
-        p = [self.data[self.pos : end_idx]]
+        p[:] = [self.data[self.pos : end_idx]]
         n = len(p[0])
         self.pos += n
         return n
@@ -49,17 +48,16 @@ class Request:
 
     def parse(self, data: deque[bytes]) -> int:
         try:
+            if len(data)<=0:
+                self.state = State.DONE
+                return 0
             chunk = data.popleft()
             if not self.state:
                 self.state = State.INITIALIZED
             if chunk and self.state is not State.DONE:
-                breakpoint()
                 decode_data = chunk.decode()
                 self._data += decode_data
                 return len(chunk)
-            elif not chunk:
-                self.state = State.DONE
-                return 0
         except Exception as e:
             raise ErrorParsingData(f"Error parsing bytes: {e}")
         finally:
@@ -125,7 +123,8 @@ def request_from_reader(reader: ChunkReader) -> Request:
     queue = deque()
     while request.state != State.DONE:
         bytes_read = reader.read(data_bytes)
-        queue.append(data_bytes[0])
+        if bytes_read > 0:
+            queue.append(data_bytes[0])
         print(f"Bytes read: {bytes_read}")
         request.parse(queue)
     request.parse_request_line()
