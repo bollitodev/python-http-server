@@ -1,3 +1,4 @@
+import socket
 from collections import deque
 from enum import Enum
 from typing import Optional
@@ -12,17 +13,17 @@ class ChunkReader:
         self.data = data.encode()
         self.num_bytes_per_read = num_bytes_per_read
 
-    def read(self, p: list[bytes]) -> int:
+    def recv(self, byte_size) -> bytes:
         if self.pos >= len(self.data):
-            return 0
+            return b""
         end_idx = self.pos + self.num_bytes_per_read
         if end_idx > len(self.data):
             end_idx = len(self.data)
 
-        p[:] = [self.data[self.pos : end_idx]]
-        n = len(p[0])
+        chunk = self.data[self.pos : end_idx]
+        n = len(chunk)
         self.pos += n
-        return n
+        return chunk
 
 
 class RequestLine:
@@ -46,12 +47,11 @@ class Request:
     request_line: RequestLine
     _data: str = ""
 
-    def parse(self, data: deque[bytes]) -> int:
+    def parse(self, chunk: bytes) -> int:
         try:
-            if len(data)<=0:
+            if not chunk:
                 self.state = State.DONE
                 return 0
-            chunk = data.popleft()
             if not self.state:
                 self.state = State.INITIALIZED
             if chunk and self.state is not State.DONE:
@@ -64,7 +64,6 @@ class Request:
             return 0
 
     def parse_request_line(self) -> int:
-        print(f"data {self._data}")
         if HTTP_SEPARATOR in self._data:
             line = self._data.split(HTTP_SEPARATOR)[0].split(" ")
             if len(line) != 3:
@@ -116,16 +115,10 @@ SUPPORT_HTTP_VERSION = "1.1"
 AVAILABLE_HTTP_METHODS = ["GET", "POST", "PUT", "PATCH"]
 
 
-def request_from_reader(reader: ChunkReader) -> Request:
+def request_from_reader(reader) -> Request:
     request = Request()
-    print(f"state (outside) {request.state}")
-    data_bytes: list[bytes] = []
-    queue = deque()
     while request.state != State.DONE:
-        bytes_read = reader.read(data_bytes)
-        if bytes_read > 0:
-            queue.append(data_bytes[0])
-        print(f"Bytes read: {bytes_read}")
-        request.parse(queue)
+        data = reader.recv(8)
+        request.parse(data)
     request.parse_request_line()
     return request
