@@ -4,28 +4,6 @@ from enum import Enum
 from typing import Optional
 
 
-class ChunkReader:
-    data: bytes = bytes()
-    num_bytes_per_read: int = 4
-    pos: int = 0
-
-    def __init__(self, data, num_bytes_per_read) -> None:
-        self.data = data.encode()
-        self.num_bytes_per_read = num_bytes_per_read
-
-    def recv(self, byte_size) -> bytes:
-        if self.pos >= len(self.data):
-            return b""
-        end_idx = self.pos + self.num_bytes_per_read
-        if end_idx > len(self.data):
-            end_idx = len(self.data)
-
-        chunk = self.data[self.pos : end_idx]
-        n = len(chunk)
-        self.pos += n
-        return chunk
-
-
 class RequestLine:
     http_version: str
     request_target: str
