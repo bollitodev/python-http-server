@@ -1,42 +1,39 @@
-WHITE_SPACE = " "
-CRLF = "\r\n"
-HOST_KEYNAME = "Host:"
+CRLF = b"\r\n"
 
 class Headers():
 
-    Host = ""
     Headers = {}
-    _is_done: bool = False
-    _counter_char: int = 0
-    _last_char = ""
+
+
+    @staticmethod
+    def parse_header(field_line: bytes)->tuple[str, str]:
+        parts = field_line.split(b":", 1)
+        if len(parts) != 2:
+            raise InvalidHeaderFormat(f"Malformmed field line: {field_line}")
+        name = parts[0]
+        value = parts[1].strip()
+        if name.endswith(b" "):
+            raise InvalidHeaderFormat(f"Extra space between name field: '{name}' ")
+        return name.decode(), value.decode() 
 
 
     def parse(self, data: bytes):
-        for i in data.decode():
-            if CRLF == self._last_char+i:
-                self._is_done = True
+        read = 0
+        done = False
+        while True:
+            idx = data[read:].index(CRLF)
+            if idx == -1:
                 break
-            if i is WHITE_SPACE and self._counter_char<1:
-                continue
-            if self._counter_char<len(HOST_KEYNAME):
-                if i != HOST_KEYNAME[self._counter_char]:
-                    raise InvalidHostFormat(f"Invalid header format: '{self.Host}'") 
-                self._counter_char+=1
-                self._is_done = True
-                continue
-            if i is WHITE_SPACE or i in CRLF:
-                continue
-            self.Host += i
-            self._last_char = i
+            if idx == 0:
+                done = True
+                break
+            name, value= self.parse_header(data[read:read+idx])
+            read += idx + len(CRLF) 
+            self.Headers[name] = value
         
-        
-        if not self._is_done:
-            raise InvalidHostFormat(f"Data is empty: '{self.Host}'")
-        self.Headers['Host'] = self.Host
-        return len(data)-2, self._is_done
+        return read, done 
 
 
-
-class InvalidHostFormat(Exception):
+class InvalidHeaderFormat(Exception):
     def __init__(self, message) -> None:
         self.message = message
